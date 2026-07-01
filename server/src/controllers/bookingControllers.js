@@ -21,7 +21,6 @@ exports.bookEvent = async (req, res) => {
     try {
         const { eventId, otp } = req.body;
 
-        // Verify OTP explicitly before proceeding
         const validOTP = await OTP.findOne({ email: req.user.email, otp, action: 'event_booking' });
         if (!validOTP) {
             return res.status(400).json({ message: 'Invalid or expired OTP for booking' });
@@ -44,7 +43,7 @@ exports.bookEvent = async (req, res) => {
             amount: event.ticketPrice
         });
 
-        await OTP.deleteOne({ _id: validOTP._id }); // cleanup
+        await OTP.deleteOne({ _id: validOTP._id });
 
         res.status(201).json({ message: 'Booking request submitted', booking });
     } catch (error) {
@@ -54,7 +53,7 @@ exports.bookEvent = async (req, res) => {
 
 exports.confirmBooking = async (req, res) => {
     try {
-        const { paymentStatus } = req.body; // 'paid' or 'not_paid'
+        const { paymentStatus } = req.body;
         const booking = await Booking.findById(req.params.id).populate('userId').populate('eventId');
         if (!booking) return res.status(404).json({ message: 'Booking not found' });
 
@@ -74,8 +73,7 @@ exports.confirmBooking = async (req, res) => {
         event.availableSeats -= 1;
         await event.save();
 
-        // Send email on admin confirmation
-        await sendBookingEmail(booking.userId.email, booking.userId.name, booking.eventId.title);
+        await sendBookingEmail(booking.userId.email, booking.userId.username, booking.eventId.title);
 
         res.json({ message: 'Booking confirmed successfully', booking });
     } catch (error) {
@@ -86,7 +84,7 @@ exports.confirmBooking = async (req, res) => {
 exports.getMyBookings = async (req, res) => {
     try {
         const bookings = req.user.role === 'admin'
-            ? await Booking.find().populate('eventId').populate('userId', 'name email').sort({ createdAt: -1 })
+            ? await Booking.find().populate('eventId').populate('userId', 'username email').sort({ createdAt: -1 })
             : await Booking.find({ userId: req.user.id }).populate('eventId').sort({ createdAt: -1 });
         res.json(bookings);
     } catch (error) {
@@ -108,7 +106,6 @@ exports.cancelBooking = async (req, res) => {
         booking.status = 'cancelled';
         await booking.save();
 
-        // Only restore the seat if it was actually confirmed and deducted
         if (wasConfirmed) {
             const event = await Event.findById(booking.eventId);
             if (event) {

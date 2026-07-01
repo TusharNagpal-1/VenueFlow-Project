@@ -28,7 +28,7 @@ const registerUser = async (req, res) => {
   const newUser=await User.create({ username, email, password: hashedPassword , role: "user", isVerified: false });
   const otp = generateOTP();
   console.log(`OTP for ${email}: ${otp}`);
-  await OTP.create({ email, otp, type: 'account_verification'});
+  await OTP.create({ email, otp, action: 'account_verification'});
   await sendOTPEmail(email, otp, 'account_verification');
   res.status(201).json({message: "OTP sent to your email for verification. Please check your inbox."});   
 } catch (error) {
@@ -59,7 +59,7 @@ const loginUser = async (req, res) => {
 
         res.json({
             _id: user._id,
-            name: user.name,
+            name: user.username,
             email: user.email,
             role: user.role,
             token: generateToken(user._id, user.role)
@@ -68,7 +68,7 @@ const loginUser = async (req, res) => {
         res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };
-exports.verifyOTP = async (req, res) => {
+const verifyOTP = async (req, res) => {
     try {
         const { email, otp } = req.body;
         const validOTP = await OTP.findOne({ email, otp, action: 'account_verification' });
@@ -82,7 +82,7 @@ exports.verifyOTP = async (req, res) => {
 
         res.json({
             _id: user._id,
-            name: user.name,
+            name: user.username,
             email: user.email,
             role: user.role,
             token: generateToken(user._id, user.role)
@@ -91,5 +91,4 @@ exports.verifyOTP = async (req, res) => {
         res.status(500).json({ message: 'Server Error' });
     }
 };
-exports.registerUser = registerUser;
-exports.loginUser = loginUser;
+module.exports = { registerUser, loginUser, verifyOTP };
