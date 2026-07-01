@@ -2,7 +2,7 @@ const User = require("../models/Usermodel.js");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const OTP = require("../models/otpmodel.js");
-const { sendOTPEmail } = require("../utils/emailService.js");
+const { sendOTPEmail } = require("../utils/email.js");
 
 const generateToken = (userId, role) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: "1h" });
