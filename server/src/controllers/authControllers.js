@@ -33,7 +33,7 @@ const registerUser = async (req, res) => {
   res.status(201).json({message: "OTP sent to your email for verification. Please check your inbox."});   
 } catch (error) {
   console.error('Error registering user:', error);
-  res.status(500).json({ message: "Internal server error" });
+  res.status(500).json({ message: "Internal server error", error: error.message });
 }
 };
 const loginUser = async (req, res) => {
@@ -88,7 +88,7 @@ const verifyOTP = async (req, res) => {
             token: generateToken(user._id, user.role)
         });
     } catch (error) {
-        res.status(500).json({ message: 'Server Error' });
+        res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };
 module.exports = { registerUser, loginUser, verifyOTP };
