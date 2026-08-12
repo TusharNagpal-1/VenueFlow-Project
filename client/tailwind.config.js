@@ -7,8 +7,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
-        display: ['"Playfair Display"', 'serif'],
+        sans: ['Inter', 'Segoe UI', 'system-ui', 'sans-serif'],
+        display: ['Georgia', 'Times New Roman', 'serif'],
       },
       keyframes: {
         'fade-up': {

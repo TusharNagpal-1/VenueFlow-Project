@@ -1,8 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { HiMail, HiLockClosed, HiBadgeCheck, HiSparkles } from 'react-icons/hi';
-import { FaArrowRight } from 'react-icons/fa';
+import { HiMail, HiLockClosed, HiBadgeCheck, HiSparkles, HiArrowRight, HiShieldCheck, HiCalendar, HiTicket } from 'react-icons/hi';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -42,121 +41,151 @@ const Login = () => {
   };
 
   return (
-    <div className="flex justify-center py-8 md:py-12">
-      <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden grid md:grid-cols-2 border border-amber-100/60 animate-fade-up">
-        {/* Image side */}
-        <div className="relative hidden md:block">
+    <div className="flex justify-center py-10 md:py-14">
+      <div className="w-full max-w-6xl overflow-hidden rounded-[32px] border border-stone-200 bg-white shadow-[0_32px_80px_rgba(15,23,42,0.10)] grid lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="relative hidden lg:block min-h-[760px]">
           <img
             src="https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=1400&auto=format&fit=crop"
             alt="Event celebration"
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 h-full w-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-stone-950/90 via-stone-950/40 to-stone-950/10"></div>
-          <div className="absolute bottom-0 p-10">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 text-stone-900 flex items-center justify-center">
-                <HiSparkles />
-              </span>
-              <span className="text-xl font-extrabold text-white">VenueFlow</span>
+          <div className="absolute inset-0 bg-gradient-to-br from-stone-950/90 via-stone-900/60 to-amber-950/30" />
+
+          <div className="relative z-10 flex h-full flex-col justify-between p-8 xl:p-10">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-stone-900 shadow-lg shadow-amber-500/30">
+                <HiSparkles className="text-xl" />
+              </div>
+              <div className="text-2xl font-black tracking-tight text-white">
+                Venue<span className="text-amber-300">Flow</span>
+              </div>
             </div>
-            <h2 className="text-3xl font-extrabold text-white mb-3">
-              Welcome back to your <span className="font-display italic text-gradient-light">spotlight.</span>
-            </h2>
-            <p className="text-amber-100/80 text-sm leading-relaxed">
-              Your next unforgettable event is one login away. Pick up right where you left off.
-            </p>
-            <div className="flex items-center gap-2 mt-6 text-xs font-bold text-amber-200 bg-white/10 backdrop-blur-sm border border-white/15 rounded-full px-4 py-2 w-fit">
-              <HiBadgeCheck className="text-amber-400 text-base" /> OTP-secured sign in
+
+            <div>
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-amber-200 backdrop-blur-sm">
+                <HiBadgeCheck className="text-sm" /> Member access
+              </div>
+
+              <h1 className="max-w-md text-4xl font-black leading-tight tracking-[-0.05em] text-white xl:text-5xl">
+                Welcome back to your next unforgettable night.
+              </h1>
+
+              <p className="mt-4 max-w-md text-base text-stone-200">
+                Discover standout events, secure seats in seconds, and keep your plans close at hand.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {[
+                { icon: <HiShieldCheck className="text-lg" />, label: 'Verified ticket access' },
+                { icon: <HiCalendar className="text-lg" />, label: 'Curated experiences' },
+                { icon: <HiTicket className="text-lg" />, label: 'Fast booking flow' },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-sm text-sm text-white/90">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-400/10 text-amber-300">{item.icon}</div>
+                  {item.label}
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Form side */}
-        <div className="p-8 md:p-12">
-          <div className="md:hidden flex items-center gap-2 mb-8">
-            <span className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 text-stone-900 flex items-center justify-center">
-              <HiSparkles />
-            </span>
-            <span className="text-xl font-extrabold text-stone-900">VenueFlow</span>
-          </div>
-
-          <div className="mb-8">
-            <h1 className="text-3xl font-extrabold text-stone-900 mb-2">Sign In</h1>
-            <p className="text-stone-500">Sign in to continue</p>
-          </div>
-
-          {error && (
-            <div className="bg-red-50 text-red-600 p-3.5 rounded-xl mb-6 text-sm font-medium border border-red-100">
-              {error}
+        <div className="flex items-center justify-center bg-[#fffdf9] p-6 sm:p-8 lg:p-12">
+          <div className="w-full max-w-md">
+            <div className="mb-8 lg:hidden">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-stone-900 shadow-lg shadow-amber-500/30">
+                  <HiSparkles className="text-xl" />
+                </div>
+                <div className="text-2xl font-black tracking-tight text-stone-900">
+                  Venue<span className="text-amber-500">Flow</span>
+                </div>
+              </div>
             </div>
-          )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {!showOTP ? (
-              <>
-                <div>
-                  <label className="block text-sm font-bold text-stone-700 mb-2">Email Address</label>
-                  <div className="relative">
-                    <HiMail className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" />
-                    <input
-                      type="email"
-                      required
-                      placeholder="you@example.com"
-                      className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-stone-200 bg-stone-50/50 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition outline-none placeholder-stone-400"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-stone-700 mb-2">Password</label>
-                  <div className="relative">
-                    <HiLockClosed className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" />
-                    <input
-                      type="password"
-                      required
-                      placeholder="••••••••"
-                      className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-stone-200 bg-stone-50/50 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition outline-none placeholder-stone-400"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div>
-                <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium p-3.5 rounded-xl mb-4">
-                  Check your inbox — a verification code has been sent to <strong>{email}</strong>.
-                </div>
-                <label className="block text-sm font-bold text-stone-700 mb-2">Verification Code (OTP)</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="6-digit code"
-                  className="w-full px-4 py-3.5 rounded-xl border border-stone-200 bg-stone-50/50 focus:ring-2 focus:ring-amber-500 transition outline-none font-bold tracking-widest text-center text-lg placeholder-stone-400"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  maxLength="6"
-                />
+            <div className="mb-8">
+              <div className="text-[11px] font-black uppercase tracking-[0.24em] text-amber-600">Sign in</div>
+              <h2 className="mt-3 text-3xl font-black tracking-[-0.05em] text-stone-900">Welcome back</h2>
+              <p className="mt-2 text-sm text-stone-500">Access your saved events and bookings.</p>
+            </div>
+
+            {error && (
+              <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                {error}
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="group w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-900 font-extrabold py-4 rounded-xl transition-all shadow-lg shadow-amber-500/25 hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-60 disabled:translate-y-0 flex items-center justify-center gap-2"
-            >
-              {loading ? 'Processing...' : (showOTP ? 'Verify OTP & Log In' : 'Sign In')}
-              {!loading && <FaArrowRight className="group-hover:translate-x-1 transition-transform" />}
-            </button>
-          </form>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {!showOTP ? (
+                <>
+                  <div>
+                    <label className="mb-2 block text-sm font-bold text-stone-700">Email address</label>
+                    <div className="relative">
+                      <HiMail className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" />
+                      <input
+                        type="email"
+                        required
+                        placeholder="you@example.com"
+                        className="w-full rounded-2xl border border-stone-200 bg-stone-50/80 pl-12 pr-4 py-3.5 text-sm text-stone-900 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                      />
+                    </div>
+                  </div>
 
-          <p className="text-center mt-8 text-stone-500">
-            Don't have an account?{' '}
-            <Link to="/register" className="text-amber-700 font-extrabold hover:underline">
-              Create one free
-            </Link>
-          </p>
+                  <div>
+                    <label className="mb-2 block text-sm font-bold text-stone-700">Password</label>
+                    <div className="relative">
+                      <HiLockClosed className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" />
+                      <input
+                        type="password"
+                        required
+                        placeholder="••••••••"
+                        className="w-full rounded-2xl border border-stone-200 bg-stone-50/80 pl-12 pr-4 py-3.5 text-sm text-stone-900 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    Check your inbox — a verification code has been sent to <strong>{email}</strong>.
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-bold text-stone-700">Verification code</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="6-digit code"
+                      className="w-full rounded-2xl border border-stone-200 bg-stone-50/80 px-4 py-3.5 text-center text-lg font-bold tracking-[0.4em] text-stone-900 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      maxLength="6"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-600 px-6 py-3.5 text-sm font-black text-stone-900 shadow-lg shadow-amber-500/20 transition hover:-translate-y-0.5 hover:shadow-xl disabled:opacity-60"
+              >
+                {loading ? 'Processing...' : showOTP ? 'Verify OTP & Log In' : 'Sign In'}
+                {!loading && <HiArrowRight className="text-base transition group-hover:translate-x-1" />}
+              </button>
+            </form>
+
+            <div className="mt-7 text-center text-sm text-stone-500">
+              Don’t have an account?{' '}
+              <Link to="/register" className="font-extrabold text-amber-700 hover:text-amber-800">
+                Create one free
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>

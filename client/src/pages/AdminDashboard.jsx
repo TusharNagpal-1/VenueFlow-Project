@@ -15,6 +15,7 @@ const AdminDashboard = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('bookings');
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const [showEventForm, setShowEventForm] = useState(false);
   const [formData, setFormData] = useState({
@@ -125,6 +126,54 @@ const AdminDashboard = () => {
   ).size;
   const pendingRequests = bookings.filter(b => b.status === 'pending').length;
 
+  const notifications = React.useMemo(() => {
+    const list = [];
+
+    if (pendingRequests > 0) {
+      list.push({
+        id: 'pending-requests',
+        title: 'Pending booking requests',
+        detail: `${pendingRequests} booking request${pendingRequests > 1 ? 's are' : ' is'} waiting for your review.`,
+        time: 'Now',
+        unread: true,
+      });
+    }
+
+    const confirmedCount = bookings.filter((b) => b.status === 'confirmed').length;
+    if (confirmedCount > 0) {
+      list.push({
+        id: 'confirmed-bookings',
+        title: 'Confirmed bookings',
+        detail: `${confirmedCount} booking${confirmedCount > 1 ? 's are' : ' is'} live and ready for check-in.`,
+        time: 'Today',
+        unread: false,
+      });
+    }
+
+    const upcomingEvents = events.filter((event) => new Date(event.date) > new Date()).slice(0, 1);
+    if (upcomingEvents.length > 0) {
+      list.push({
+        id: `upcoming-${upcomingEvents[0]._id}`,
+        title: 'Upcoming event',
+        detail: `${upcomingEvents[0].title} is scheduled for ${new Date(upcomingEvents[0].date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}.`,
+        time: 'Today',
+        unread: false,
+      });
+    }
+
+    if (!list.length) {
+      list.push({
+        id: 'all-clear',
+        title: 'All clear',
+        detail: 'No new booking activity right now. Everything is running smoothly.',
+        time: 'Updated',
+        unread: false,
+      });
+    }
+
+    return list.slice(0, 4);
+  }, [bookings, events, pendingRequests]);
+
   return (
     <div className="max-w-7xl mx-auto">
       {/* Toast / Notice */}
@@ -152,12 +201,53 @@ const AdminDashboard = () => {
             <h1 className="text-3xl md:text-4xl font-extrabold mb-2">Admin Dashboard</h1>
             <p className="text-amber-100/60 font-medium">Manage events and confirm bookings.</p>
           </div>
-          <button
-            onClick={() => setShowEventForm(!showEventForm)}
-            className="group w-full md:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-stone-900 font-extrabold py-3.5 px-7 rounded-full transition-all shadow-xl shadow-amber-500/25 hover:-translate-y-0.5"
-          >
-            <HiPlus className="text-xl group-hover:rotate-90 transition-transform" /> {showEventForm ? 'Close Form' : 'Create Event'}
-          </button>
+          <div className="flex items-center gap-3 w-full md:w-auto justify-center md:justify-end">
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications((open) => !open)}
+                className="relative flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg text-amber-200 transition hover:bg-white/10"
+              >
+                <HiClock className="text-xl" />
+                <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-amber-400 border border-stone-950"></span>
+              </button>
+
+              {showNotifications && (
+                <div className="absolute right-0 top-full mt-3 w-80 rounded-2xl border border-white/10 bg-stone-950/95 p-3 shadow-2xl shadow-black/30">
+                  <div className="flex items-center justify-between px-2 pb-2 border-b border-white/10 mb-2">
+                    <div className="text-sm font-bold text-white">Notifications</div>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-300">
+                      {notifications.filter((item) => item.unread).length} new
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {notifications.map((item) => (
+                      <div
+                        key={item.id}
+                        className={`rounded-xl border px-3 py-2.5 ${item.unread ? 'border-amber-400/30 bg-amber-500/10' : 'border-white/10 bg-white/5'}`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="text-sm font-bold text-white">{item.title}</div>
+                            <div className="text-xs text-stone-300 mt-1">{item.detail}</div>
+                          </div>
+                          {item.unread && <span className="mt-1 h-2.5 w-2.5 rounded-full bg-amber-400" />}
+                        </div>
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400 mt-2">{item.time}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() => setShowEventForm(!showEventForm)}
+              className="group w-full md:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-stone-900 font-extrabold py-3.5 px-7 rounded-full transition-all shadow-xl shadow-amber-500/25 hover:-translate-y-0.5"
+            >
+              <HiPlus className="text-xl group-hover:rotate-90 transition-transform" /> {showEventForm ? 'Close Form' : 'Create Event'}
+            </button>
+          </div>
         </div>
       </div>
 

@@ -1,100 +1,79 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../utils/axios';
 import {
-  HiSparkles, HiCalendar, HiTicket, HiArrowRight, HiClock, HiLocationMarker,
-  HiDownload, HiCheckCircle, HiStar, HiX, HiTrendingUp, HiFire, HiBadgeCheck,
-  HiExclamation,
+  HiSearch,
+  HiBell,
+  HiSparkles,
+  HiTicket,
+  HiCalendar,
+  HiLocationMarker,
+  HiArrowRight,
+  HiClock,
+  HiCheckCircle,
+  HiStar,
+  HiChevronRight,
+  HiBadgeCheck,
+  HiTrendingUp,
+  HiUserCircle,
+  HiLogout,
+  HiMenu,
+  HiX,
+  HiHeart,
+  HiFilter,
+  HiArrowCircleRight,
 } from 'react-icons/hi';
-import CountUp from '../components/CountUp';
-import Reveal from '../components/Reveal';
-import BookingChart from '../components/BookingChart';
 
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?q=80&w=1200&auto=format&fit=crop';
+const CATEGORY_TABS = ['All', 'Music', 'Workshops', 'Sports', 'Conferences', 'Entertainment'];
 
-const getEventImage = (ev) => ev?.image || FALLBACK_IMG;
+const getEventImage = (event) => event?.image || FALLBACK_IMG;
 const getInitials = (name) =>
   (name || '?').split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?';
 
-const fmtDate = (d) => new Date(d).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-const fmtShortDate = (d) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-const fmtTime = (d) => new Date(d).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+const formatDate = (date) =>
+  new Date(date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+
+const formatFullDate = (date) =>
+  new Date(date).toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' });
+
+const formatTime = (date) =>
+  new Date(date).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+
+const formatPrice = (value) => (Number(value) === 0 ? 'Free' : `$${value}`);
 const bookingCode = (id) => `#${String(id).slice(-8).toUpperCase()}`;
 
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+};
+
 const getCountdown = (dateStr) => {
-  const evt = new Date(dateStr);
-  const diff = evt - new Date();
+  const target = new Date(dateStr);
+  const diff = target - new Date();
   if (diff <= 0) return 'Started';
   const days = Math.floor(diff / 86400000);
-  const time = evt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  const time = target.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   if (days === 0) return `Today at ${time}`;
   if (days === 1) return `Tomorrow at ${time}`;
-  if (days < 7) return `In ${days} days`;
-  return `Starts in ${days} days`;
+  return `In ${days} days`;
 };
-
-const buildChartData = (bookings) => {
-  const months = [];
-  const now = new Date();
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push({ label: d.toLocaleString('en', { month: 'short' }), key: `${d.getFullYear()}-${d.getMonth()}`, value: 0 });
-  }
-  bookings.forEach((b) => {
-    const d = new Date(b.createdAt);
-    const key = `${d.getFullYear()}-${d.getMonth()}`;
-    const m = months.find((x) => x.key === key);
-    if (m) m.value += 1;
-  });
-  return months;
-};
-
-const StatusBadge = ({ status }) => {
-  const styles = {
-    confirmed: 'bg-green-100 text-green-700',
-    pending: 'bg-amber-100 text-amber-700',
-    cancelled: 'bg-red-100 text-red-700',
-  };
-  return (
-    <span className={`px-2.5 py-1 text-[10px] font-black rounded-full uppercase tracking-wider ${styles[status] || 'bg-stone-100 text-stone-600'}`}>
-      {status}
-    </span>
-  );
-};
-
-const PaymentBadge = ({ status }) => {
-  const paid = status === 'paid';
-  return (
-    <span className={`px-2.5 py-1 text-[10px] font-black rounded-full uppercase tracking-wider ${paid ? 'bg-blue-100 text-blue-700' : 'bg-stone-100 text-stone-500'}`}>
-      {paid ? 'Paid' : 'Unpaid'}
-    </span>
-  );
-};
-
-const SectionHeader = ({ eyebrow, title, sub, icon, action }) => (
-  <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
-    <div>
-      <span className="text-[11px] font-black uppercase tracking-[0.22em] text-amber-600">{eyebrow}</span>
-      <h2 className="text-2xl md:text-3xl font-extrabold text-stone-900 mt-1 flex items-center gap-3">
-        {icon && <span className="text-amber-600">{icon}</span>}
-        {title}
-      </h2>
-      {sub && <p className="text-stone-500 text-sm mt-1.5">{sub}</p>}
-    </div>
-    {action}
-  </div>
-);
 
 const UserDashboard = () => {
-  const { user } = useContext(AuthContext);
+  const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
-  const { hash } = useLocation();
 
   const [bookings, setBookings] = useState([]);
   const [allEvents, setAllEvents] = useState([]);
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -104,12 +83,6 @@ const UserDashboard = () => {
     fetchData();
   }, [user, navigate]);
 
-  useEffect(() => {
-    if (hash === '#bookings' && bookings.length > 0) {
-      setTimeout(() => document.getElementById('bookings')?.scrollIntoView({ behavior: 'smooth' }), 100);
-    }
-  }, [hash, bookings.length]);
-
   const fetchData = async () => {
     setError('');
     try {
@@ -117,8 +90,8 @@ const UserDashboard = () => {
         api.get('/events/my-bookings'),
         api.get('/events'),
       ]);
-      setBookings(bookingsRes.data);
-      setAllEvents(eventsRes.data);
+      setBookings(bookingsRes.data || []);
+      setAllEvents(eventsRes.data || []);
     } catch (error) {
       console.error('Error fetching dashboard data', error);
       setError("We couldn't load your dashboard right now. Please try again.");
@@ -127,540 +100,595 @@ const UserDashboard = () => {
     }
   };
 
-  const cancelBooking = async (id) => {
-    if (window.confirm('Are you sure you want to cancel this booking request?')) {
-      try {
-        await api.delete(`/events/cancel/${id}`);
-        fetchData();
-      } catch (error) {
-        alert(error.response?.data?.message || 'Error cancelling booking');
-      }
+  const primaryEvent = useMemo(() => {
+    if (bookings.length > 0) {
+      const upcoming = [...bookings]
+        .filter((booking) => booking.eventId && booking.status !== 'cancelled')
+        .sort((a, b) => new Date(a.eventId.date) - new Date(b.eventId.date));
+      if (upcoming[0]?.eventId) return upcoming[0].eventId;
     }
-  };
-
-  const downloadTicket = (booking) => {
-    const ev = booking.eventId;
-    const lines = [
-      '=============================',
-      '   VENUEFLOW · EVENT TICKET',
-      '=============================',
-      `Booking ID : ${booking._id}`,
-      `Ticket No. : ${bookingCode(booking._id)}`,
-      '',
-      `Event      : ${ev?.title || 'N/A'}`,
-      `Category   : ${ev?.category || 'General'}`,
-      `Date       : ${ev ? fmtDate(ev.date) : 'N/A'}`,
-      `Time       : ${ev ? fmtTime(ev.date) : 'N/A'}`,
-      `Venue      : ${ev?.location || 'N/A'}`,
-      `Booked By  : ${user?.name || user?.username || 'N/A'}`,
-      '',
-      `Amount     : ${booking.amount === 0 ? 'FREE' : `$${booking.amount}`}`,
-      `Status     : ${booking.status.toUpperCase()} / ${(booking.paymentStatus || 'not_paid').replace('_', ' ').toUpperCase()}`,
-      '',
-      'Present this ticket at the venue entrance.',
-      'Thank you for choosing VenueFlow!',
-    ];
-    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `venueflow-ticket-${bookingCode(booking._id).slice(1)}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const stats = useMemo(() => {
-    const now = new Date();
-    const total = bookings.length;
-    const confirmed = bookings.filter((b) => b.status === 'confirmed').length;
-    const pending = bookings.filter((b) => b.status === 'pending').length;
-    const upcomingList = bookings
-      .filter((b) => b.eventId && b.status !== 'cancelled' && new Date(b.eventId.date) > now)
-      .sort((a, b) => new Date(a.eventId.date) - new Date(b.eventId.date));
-    const thisMonth = bookings.filter((b) => {
-      const d = new Date(b.createdAt);
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    }).length;
-    return { total, confirmed, pending, upcomingList, thisMonth };
-  }, [bookings]);
-
-  const upcoming = stats.upcomingList;
-  const nextEvent = upcoming[0];
-  const confirmedCount = stats.confirmed;
-  const pendingCount = stats.pending;
-
-  const chartData = useMemo(() => buildChartData(bookings), [bookings]);
-
-  const recommended = useMemo(() => {
-    const bookedCategory = {};
-    const bookedIds = new Set();
-    bookings.forEach((b) => {
-      if (b.eventId?._id) bookedIds.add(String(b.eventId._id));
-      if (b.eventId?.category) bookedCategory[b.eventId.category] = (bookedCategory[b.eventId.category] || 0) + 1;
-    });
-    const future = allEvents.filter((e) => new Date(e.date) > new Date());
-    let list = future
-      .filter((e) => !bookedIds.has(String(e._id)))
-      .map((e) => ({ ...e, score: bookedCategory[e.category] || 0 }))
-      .sort((a, b) => b.score - a.score || new Date(a.date) - new Date(b.date));
-    if (list.length === 0) {
-      list = [...future].sort((a, b) => new Date(a.date) - new Date(b.date));
-    }
-    return list.slice(0, 4);
+    return allEvents.find((event) => new Date(event.date) > new Date()) || allEvents[0];
   }, [allEvents, bookings]);
 
-  const statCards = [
-    {
-      label: 'Total Bookings',
-      value: stats.total,
-      icon: <HiTicket />,
-      iconCls: 'from-amber-400 to-amber-600 text-stone-900 shadow-amber-500/25',
-      indicator: stats.thisMonth > 0 ? `+${stats.thisMonth} this month` : 'No new this month',
-      dot: 'bg-amber-500',
-      trend: stats.thisMonth > 0 ? 'up' : 'flat',
-    },
-    {
-      label: 'Confirmed',
-      value: confirmedCount,
-      icon: <HiCheckCircle />,
-      iconCls: 'from-green-400 to-green-600 text-white shadow-green-500/25',
-      indicator: stats.total > 0 ? `${Math.round((confirmedCount / stats.total) * 100)}% of bookings` : 'No bookings yet',
-      dot: 'bg-green-500',
-      trend: 'up',
-    },
-    {
-      label: 'Pending',
-      value: pendingCount,
-      icon: <HiClock />,
-      iconCls: 'from-amber-400 to-orange-500 text-white shadow-orange-500/25',
-      indicator: pendingCount > 0 ? 'Needs attention' : 'All caught up',
-      dot: 'bg-orange-500',
-      trend: pendingCount > 0 ? 'flat' : 'down',
-    },
-    {
-      label: 'Upcoming',
-      value: upcoming.length,
-      icon: <HiCalendar />,
-      iconCls: 'from-blue-400 to-indigo-500 text-white shadow-blue-500/25',
-      indicator: nextEvent ? getCountdown(nextEvent.eventId.date) : 'No upcoming events',
-      dot: 'bg-blue-500',
-      trend: upcoming.length > 0 ? 'up' : 'flat',
-    },
-  ];
+  const upcomingBooking = useMemo(() => {
+    if (!bookings.length) return null;
+    return [...bookings]
+      .filter((booking) => booking.eventId && booking.status !== 'cancelled')
+      .sort((a, b) => new Date(a.eventId.date) - new Date(b.eventId.date))[0];
+  }, [bookings]);
+
+  const stats = useMemo(() => {
+    const total = bookings.length;
+    const confirmed = bookings.filter((booking) => booking.status === 'confirmed').length;
+    const upcoming = bookings.filter(
+      (booking) => booking.eventId && booking.status !== 'cancelled' && new Date(booking.eventId.date) > new Date()
+    ).length;
+    const completed = bookings.filter((booking) => booking.status === 'confirmed' && booking.eventId && new Date(booking.eventId.date) < new Date()).length;
+    return { total, confirmed, upcoming, completed };
+  }, [bookings]);
+
+  const filteredEvents = useMemo(() => {
+    const query = searchTerm.toLowerCase();
+    return allEvents.filter((event) => {
+      const matchesCategory = activeCategory === 'All' || event.category === activeCategory;
+      const matchesText = !query || `${event.title} ${event.location} ${event.category}`.toLowerCase().includes(query);
+      return matchesCategory && matchesText;
+    });
+  }, [activeCategory, allEvents, searchTerm]);
+
+  const recommendations = useMemo(() => {
+    const bookedIds = new Set(bookings.map((booking) => String(booking.eventId?._id)).filter(Boolean));
+    const futureEvents = allEvents.filter((event) => new Date(event.date) > new Date() && !bookedIds.has(String(event._id)));
+    return futureEvents.slice(0, 4);
+  }, [allEvents, bookings]);
+
+  const notifications = useMemo(() => {
+    const list = [];
+
+    if (upcomingBooking?.eventId) {
+      list.push({
+        id: 'upcoming-event',
+        title: 'Upcoming event',
+        detail: `${upcomingBooking.eventId.title} starts ${getCountdown(upcomingBooking.eventId.date)}.`,
+        time: 'Now',
+        unread: true,
+      });
+    }
+
+    const confirmed = bookings.filter((booking) => booking.status === 'confirmed').slice(0, 2);
+    confirmed.forEach((booking) => {
+      if (booking.eventId?.title) {
+        list.push({
+          id: `confirmed-${booking._id}`,
+          title: 'Booking confirmed',
+          detail: `Your ticket for ${booking.eventId.title} is confirmed.`,
+          time: 'Today',
+          unread: true,
+        });
+      }
+    });
+
+    if (bookings.filter((booking) => booking.status === 'pending').length > 0) {
+      list.push({
+        id: 'pending-booking',
+        title: 'Pending review',
+        detail: 'One of your booking requests is still awaiting confirmation.',
+        time: 'Updated',
+        unread: true,
+      });
+    }
+
+    if (!list.length) {
+      list.push({
+        id: 'discover-events',
+        title: 'Discover events',
+        detail: 'Explore new experiences and reserve your next unforgettable night.',
+        time: 'Now',
+        unread: true,
+      });
+    }
+
+    return list.slice(0, 4);
+  }, [bookings, upcomingBooking]);
+
+  const statusLabel = (status) => {
+    if (!status) return 'pending';
+    return status;
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div className="rounded-3xl bg-gradient-to-r from-stone-200 via-amber-100 to-stone-200 bg-[length:400px_100%] animate-shimmer h-52"></div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-          {[1, 2, 3, 4].map((n) => (
-            <div key={n} className="bg-white rounded-2xl p-6 border border-amber-100/60 animate-shimmer bg-[length:400px_100%] h-28"></div>
-          ))}
-        </div>
-        <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white rounded-3xl p-8 border border-amber-100/60 animate-shimmer bg-[length:400px_100%] h-72"></div>
-          <div className="bg-white rounded-3xl p-8 border border-amber-100/60 animate-shimmer bg-[length:400px_100%] h-72"></div>
+      <div className="max-w-7xl mx-auto pb-12">
+        <div className="animate-pulse space-y-8">
+          <div className="h-80 rounded-[32px] bg-stone-200"></div>
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((item) => (
+              <div key={item} className="h-36 rounded-3xl bg-stone-200"></div>
+            ))}
+          </div>
+          <div className="h-80 rounded-[32px] bg-stone-200"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto pb-10 space-y-14">
-      {/* ============ HERO ============ */}
-      <Reveal>
-        <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-stone-900 via-stone-950 to-stone-900 text-white shadow-2xl">
-          <div className="absolute -top-24 -right-16 w-72 h-72 bg-amber-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-32 -left-16 w-80 h-80 bg-orange-600/15 rounded-full blur-3xl"></div>
-          <div className="absolute top-10 right-1/4 w-2 h-2 rounded-full bg-amber-400/70 animate-float"></div>
-          <div className="absolute top-24 right-8 w-1.5 h-1.5 rounded-full bg-amber-300/50 animate-float" style={{ animationDelay: '1.2s' }}></div>
-          <div className="absolute bottom-16 left-1/3 w-2 h-2 rounded-full bg-amber-400/50 animate-float" style={{ animationDelay: '2s' }}></div>
-
-          <div className="relative p-8 md:p-12 flex flex-col md:flex-row md:items-center gap-8">
-            <div className="flex-1">
-              <span className="inline-flex items-center gap-2 bg-white/5 border border-white/10 text-amber-300 text-[10px] font-black uppercase tracking-[0.22em] px-4 py-1.5 rounded-full mb-6">
-                <HiBadgeCheck className="text-amber-400 text-sm" /> Member Dashboard
-              </span>
-              <div className="flex items-center gap-4 mb-5">
-                <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-stone-900 flex items-center justify-center text-2xl md:text-3xl font-black shadow-xl shadow-amber-500/30">
-                  {getInitials(user?.name || user?.username)}
-                </div>
-                <div>
-                  <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight">
-                    Welcome back, {user?.name || user?.username}!
-                  </h1>
-                  <p className="text-amber-100/60 mt-1.5 font-medium flex items-center gap-2">
-                    <HiSparkles className="text-amber-400" /> Here's what's happening with your events.
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-3 mt-6">
-                <Link
-                  to="/"
-                  className="group inline-flex items-center gap-2 bg-gradient-to-r from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-stone-900 font-extrabold py-3.5 px-7 rounded-full transition-all shadow-xl shadow-amber-500/25 hover:-translate-y-0.5"
-                >
-                  Explore Events <HiArrowRight className="group-hover:translate-x-1 transition-transform" />
-                </Link>
-                <a
-                  href="#bookings"
-                  className="inline-flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/15 text-amber-100 font-bold py-3.5 px-7 rounded-full transition-all hover:-translate-y-0.5"
-                >
-                  <HiTicket className="text-amber-400" /> View My Bookings
-                </a>
-              </div>
+    <div className="max-w-7xl mx-auto pb-12">
+      <nav className="sticky top-4 z-30 mb-8">
+        <div className="backdrop-blur-xl bg-stone-950/80 border border-white/10 shadow-[0_18px_45px_rgba(0,0,0,0.25)] rounded-full px-4 py-3 flex items-center justify-between gap-3 text-white">
+          <Link to="/" className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 text-stone-900 flex items-center justify-center font-black shadow-lg shadow-amber-500/30">
+              <HiSparkles className="text-lg" />
             </div>
+            <div className="font-black tracking-tight text-lg hidden sm:block">
+              Venue<span className="text-amber-400">Flow</span>
+            </div>
+          </Link>
 
-            {nextEvent && (
-              <div className="md:w-72 shrink-0">
-                <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-white/10">
-                  <img src={getEventImage(nextEvent.eventId)} alt="" className="w-full h-44 object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-stone-950/90 via-stone-950/30 to-transparent"></div>
-                  <div className="absolute bottom-0 left-0 right-0 p-5">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-300 mb-1.5">Next Up</p>
-                    <p className="font-extrabold text-white leading-tight mb-1">{nextEvent.eventId.title}</p>
-                    <p className="text-amber-100/70 text-xs font-semibold flex items-center gap-1.5">
-                      <HiClock className="text-amber-400" /> {getCountdown(nextEvent.eventId.date)}
-                    </p>
+          <div className="hidden md:flex items-center gap-8 text-sm font-semibold text-stone-200">
+            <Link to="/" className="hover:text-amber-300 transition-colors">Explore Events</Link>
+            <Link to="#bookings" className="hover:text-amber-300 transition-colors">My Bookings</Link>
+            <Link to="/dashboard" className="hover:text-amber-300 transition-colors">Dashboard</Link>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition">
+              <HiSearch className="text-lg text-amber-200" />
+            </button>
+            <div className="relative">
+              <button
+                onClick={() => setNotificationsOpen((open) => !open)}
+                className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition relative"
+              >
+                <HiBell className="text-lg text-amber-200" />
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 border border-stone-950"></span>
+              </button>
+
+              {notificationsOpen && (
+                <div className="absolute right-0 top-full mt-3 w-80 rounded-2xl border border-white/10 bg-stone-950/95 p-3 shadow-2xl shadow-black/30">
+                  <div className="flex items-center justify-between px-2 pb-2 border-b border-white/10 mb-2">
+                    <div className="text-sm font-bold text-white">Notifications</div>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-300">
+                      {notifications.filter((item) => item.unread).length} new
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {notifications.map((item) => (
+                      <div
+                        key={item.id}
+                        className={`rounded-xl border px-3 py-2.5 ${item.unread ? 'border-amber-400/30 bg-amber-500/10' : 'border-white/10 bg-white/5'}`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="text-sm font-bold text-white">{item.title}</div>
+                            <div className="text-xs text-stone-300 mt-1">{item.detail}</div>
+                          </div>
+                          {item.unread && <span className="mt-1 h-2.5 w-2.5 rounded-full bg-amber-400" />}
+                        </div>
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400 mt-2">{item.time}</div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
+
+            <div className="relative">
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2 py-1.5 hover:bg-white/10 transition"
+              >
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-stone-900 font-black flex items-center justify-center text-xs">
+                  {getInitials(user?.name || user?.username)}
+                </div>
+                <span className="hidden sm:block text-sm font-semibold text-stone-100">{user?.name || user?.username}</span>
+                <HiChevronRight className={`hidden sm:block text-sm transition ${menuOpen ? 'rotate-90' : ''}`} />
+              </button>
+
+              {menuOpen && (
+                <div className="absolute right-0 top-full mt-3 w-56 rounded-2xl border border-white/10 bg-stone-950/95 p-2 shadow-2xl shadow-black/30">
+                  <div className="px-3 py-2 border-b border-white/10 mb-2">
+                    <div className="text-sm font-bold text-white">{user?.name || user?.username}</div>
+                    <div className="text-xs text-stone-400">{user?.email}</div>
+                  </div>
+                  <Link to="/dashboard" className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-stone-200 hover:bg-white/5">
+                    <HiUserCircle className="text-lg text-amber-400" /> Dashboard
+                  </Link>
+                  <Link to="#bookings" className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-stone-200 hover:bg-white/5">
+                    <HiTicket className="text-lg text-amber-400" /> My Bookings
+                  </Link>
+                  <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-red-300 hover:bg-red-500/10">
+                    <HiLogout className="text-lg" /> Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </Reveal>
+      </nav>
 
-      {/* ============ ERROR BANNER ============ */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="font-medium flex items-center gap-2">
-            <HiExclamation className="text-xl" /> {error}
-          </p>
-          <button
-            onClick={fetchData}
-            className="bg-red-600 hover:bg-red-500 text-white font-bold px-5 py-2.5 rounded-full transition shrink-0"
-          >
-            Retry
-          </button>
+        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-red-700 flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={fetchData} className="font-bold underline">Retry</button>
         </div>
       )}
 
-      {/* ============ STATS ============ */}
-      <section>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          {statCards.map((card, i) => (
-            <Reveal key={card.label} delay={i * 80} className="h-full">
-              <div className="group bg-white rounded-3xl p-5 md:p-6 shadow-soft border border-amber-100/60 hover:-translate-y-1.5 hover:shadow-xl transition-all duration-300 h-full">
-                <div className="flex items-start justify-between mb-4">
-                  <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br flex items-center justify-center text-xl shadow-lg group-hover:scale-110 group-hover:-rotate-3 transition-transform ${card.iconCls}`}>
-                    {card.icon}
-                  </div>
-                  <span className={`text-[10px] font-black px-2 py-1 rounded-full flex items-center gap-1 ${card.trend === 'up' ? 'bg-green-50 text-green-600' : 'bg-stone-50 text-stone-500'}`}>
-                    {card.trend === 'up' && <HiTrendingUp />}
-                    {card.trend === 'down' && <HiTrendingUp className="rotate-180" />}
-                    {card.trend === 'flat' && <span className="w-1.5 h-1.5 rounded-full bg-current"></span>}
-                  </span>
-                </div>
-                <div className="text-4xl font-black text-stone-900 tracking-tight">
-                  <CountUp value={card.value} />
-                </div>
-                <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mt-1">{card.label}</p>
-                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-amber-50">
-                  <span className={`w-1.5 h-1.5 rounded-full ${card.dot}`}></span>
-                  <p className="text-[11px] font-semibold text-stone-400">{card.indicator}</p>
-                </div>
+      <section className="mb-10">
+        <div className="grid lg:grid-cols-[1.2fr_0.8fr] gap-6">
+          <div className="relative overflow-hidden rounded-[30px] bg-gradient-to-br from-stone-950 via-stone-900 to-[#1d140d] px-6 py-7 md:px-8 md:py-10 text-white shadow-[0_30px_60px_rgba(0,0,0,0.2)]">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(251,146,60,0.30),transparent_35%),radial-gradient(circle_at_bottom_left,_rgba(251,191,36,0.12),transparent_30%)]" />
+            <div className="relative z-10 max-w-xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.25em] text-amber-200">
+                <HiBadgeCheck className="text-sm" /> VenueFlow Member
               </div>
-            </Reveal>
-          ))}
-        </div>
-      </section>
+              <h1 className="mt-6 text-4xl md:text-5xl font-black leading-none tracking-[-0.04em]">
+                {getGreeting()}, {user?.name || user?.username}
+              </h1>
+              <p className="mt-4 text-base md:text-lg text-stone-300 max-w-lg">
+                Discover experiences worth remembering.
+              </p>
 
-      {/* ============ ANALYTICS + UPCOMING ============ */}
-      <section>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Reveal className="lg:col-span-2">
-            <div className="bg-white rounded-3xl shadow-soft border border-amber-100/60 p-6 md:p-8 h-full">
-              <SectionHeader
-                eyebrow="Analytics"
-                title="Booking Activity"
-                sub="Your bookings over the last 6 months"
-                icon={<HiTrendingUp />}
-              />
-              <BookingChart data={chartData} />
-            </div>
-          </Reveal>
-
-          <Reveal delay={120}>
-            <div className="bg-white rounded-3xl shadow-soft border border-amber-100/60 p-6 md:p-8 h-full flex flex-col">
-              <SectionHeader eyebrow="Coming Soon" title="Upcoming Events" icon={<HiCalendar />} />
-              {upcoming.length === 0 ? (
-                <div className="flex flex-col items-center justify-center flex-grow text-center py-10">
-                  <div className="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center mb-4 text-2xl">🗓️</div>
-                  <p className="text-stone-600 font-bold">No upcoming events</p>
-                  <p className="text-stone-400 text-sm mt-1 mb-5">Book a spot to see it here.</p>
-                  <Link to="/" className="inline-flex items-center gap-2 bg-amber-900 hover:bg-amber-800 text-white font-bold px-5 py-2.5 rounded-full transition text-sm">
-                    Browse Events
-                  </Link>
-                </div>
-              ) : (
-                <div className="space-y-4 overflow-y-auto max-h-[360px] pr-1">
-                  {upcoming.map((b) => (
-                    <div key={b._id} className="group flex gap-4 bg-stone-50/70 border border-amber-50 rounded-2xl p-3 hover:border-amber-300 hover:bg-amber-50/50 transition-all">
-                      <div className="relative w-24 h-24 rounded-xl overflow-hidden shrink-0">
-                        <img src={getEventImage(b.eventId)} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <StatusBadge status={b.status} />
-                        </div>
-                        <h3 className="font-extrabold text-stone-900 text-sm truncate">{b.eventId.title}</h3>
-                        <p className="text-xs text-stone-500 font-semibold mt-1 flex items-center gap-1.5">
-                          <HiCalendar className="text-amber-500" /> {fmtShortDate(b.eventId.date)} · {fmtTime(b.eventId.date)}
-                        </p>
-                        <p className="text-xs text-stone-400 font-medium flex items-center gap-1.5 mt-0.5">
-                          <HiLocationMarker className="text-amber-500" /> {b.eventId.location}
-                        </p>
-                        <p className="text-[11px] font-black text-amber-700 mt-2">{getCountdown(b.eventId.date)}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ============ MY BOOKINGS ============ */}
-      <section id="bookings" className="scroll-mt-24">
-        <Reveal>
-          <SectionHeader
-            eyebrow="Your Tickets"
-            title="My Bookings"
-            sub="Track, download, and manage every booking you've made"
-            icon={<HiTicket />}
-            action={bookings.length > 0 && (
-              <span className="text-sm font-bold text-stone-500">{bookings.length} booking{bookings.length === 1 ? '' : 's'}</span>
-            )}
-          />
-        </Reveal>
-
-        {bookings.length === 0 ? (
-          <Reveal>
-            <div className="relative overflow-hidden bg-white rounded-3xl shadow-soft border border-amber-100/60 p-12 md:p-16 text-center">
-              <div className="absolute -top-16 -right-16 w-56 h-56 bg-amber-100/60 rounded-full blur-2xl"></div>
-              <div className="relative">
-                <div className="w-24 h-24 bg-gradient-to-br from-amber-100 to-amber-200 rounded-full flex items-center justify-center mx-auto mb-6 animate-float">
-                  <HiTicket className="text-amber-500 text-4xl" />
-                </div>
-                <h3 className="text-2xl font-extrabold text-stone-900 mb-2">No bookings yet</h3>
-                <p className="text-stone-500 font-medium mb-8 max-w-sm mx-auto">
-                  Discover exciting events and book your first experience today!
-                </p>
-                <Link
-                  to="/"
-                  className="group inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-900 font-extrabold py-4 px-10 rounded-full transition-all shadow-lg shadow-amber-500/25 hover:-translate-y-0.5"
-                >
-                  Explore Events <HiArrowRight className="group-hover:translate-x-1 transition-transform" />
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link to="/" className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-400 to-amber-600 px-6 py-3.5 rounded-full text-sm font-black text-stone-900 shadow-lg shadow-amber-500/25 hover:-translate-y-0.5 transition">
+                  Explore Events <HiArrowRight />
+                </Link>
+                <Link to="#bookings" className="inline-flex items-center gap-2 border border-white/15 bg-white/5 px-6 py-3.5 rounded-full text-sm font-bold text-white hover:bg-white/10 transition">
+                  View My Bookings
                 </Link>
               </div>
-            </div>
-          </Reveal>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {bookings.map((booking, i) => (
-              <Reveal key={booking._id} delay={(i % 3) * 90} className="h-full">
-                <div className="group bg-white rounded-3xl overflow-hidden shadow-soft hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-300 border border-amber-100/60 flex flex-col h-full">
-                  <div className="relative h-44 overflow-hidden">
-                    <img
-                      src={getEventImage(booking.eventId)}
-                      alt={booking.eventId?.title || 'Event'}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-stone-950/70 via-transparent to-transparent"></div>
-                    <div className="absolute top-4 left-4 bg-stone-950/70 backdrop-blur-sm text-amber-200 text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full">
-                      {booking.eventId?.category || 'Event'}
-                    </div>
-                    <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-black shadow-lg">
-                      {booking.amount === 0 ? <span className="text-green-600">FREE</span> : <span className="text-amber-800">${booking.amount}</span>}
-                    </div>
-                    <div className="absolute bottom-3 left-4 right-4 flex flex-wrap items-center gap-2">
-                      <StatusBadge status={booking.status} />
-                      {booking.status !== 'cancelled' && <PaymentBadge status={booking.paymentStatus} />}
-                      <span className="ml-auto text-[10px] font-black text-white/90 bg-stone-950/50 px-2.5 py-1 rounded-full backdrop-blur-sm">
-                        {bookingCode(booking._id)}
-                      </span>
-                    </div>
-                  </div>
 
-                  <div className="p-6 flex-grow flex flex-col">
-                    {booking.eventId ? (
-                      <>
-                        <h3 className="text-lg font-extrabold text-stone-900 mb-4 leading-tight group-hover:text-amber-700 transition-colors">
-                          {booking.eventId.title}
-                        </h3>
-                        <div className="text-sm space-y-2.5 mb-5">
-                          <p className="flex items-center gap-2.5 text-stone-600 font-medium">
-                            <HiCalendar className="text-amber-500 shrink-0" /> {fmtDate(booking.eventId.date)}
-                          </p>
-                          <p className="flex items-center gap-2.5 text-stone-600 font-medium">
-                            <HiClock className="text-amber-500 shrink-0" /> {fmtTime(booking.eventId.date)}
-                          </p>
-                          <p className="flex items-center gap-2.5 text-stone-600 font-medium">
-                            <HiLocationMarker className="text-amber-500 shrink-0" /> {booking.eventId.location}
-                          </p>
-                          <p className="flex items-center gap-2.5 text-stone-500 text-xs font-semibold">
-                            <HiTicket className="text-stone-400 shrink-0" /> Booked on {new Date(booking.createdAt).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </>
-                    ) : (
-                      <p className="text-red-500 italic font-medium mb-5">Event details unavailable</p>
-                    )}
-
-                    <div className="mt-auto flex flex-wrap items-center gap-2 pt-4 border-t border-amber-50">
-                      {booking.eventId && (
-                        <Link
-                          to={`/events/${booking.eventId._id}`}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 bg-stone-900 hover:bg-stone-800 text-white font-bold text-sm py-2.5 rounded-xl transition-all"
-                        >
-                          View Details <HiArrowRight className="text-xs" />
-                        </Link>
-                      )}
-                      {booking.status !== 'cancelled' && (
-                        <>
-                          <button
-                            onClick={() => downloadTicket(booking)}
-                            className="flex-1 inline-flex items-center justify-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-sm py-2.5 rounded-xl transition-all"
-                          >
-                            <HiDownload /> Ticket
-                          </button>
-                          <button
-                            onClick={() => cancelBooking(booking._id)}
-                            title="Cancel booking"
-                            className="w-10 h-10 inline-flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 rounded-xl transition-all"
-                          >
-                            <HiX />
-                          </button>
-                        </>
-                      )}
-                      {booking.status === 'cancelled' && (
-                        <span className="flex-1 text-center text-xs font-bold text-stone-400 italic">Booking cancelled</span>
-                      )}
-                    </div>
-                  </div>
+              <div className="mt-8 flex items-center gap-6 text-sm text-stone-300">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-400"></div>
+                  3 upcoming plans
                 </div>
-              </Reveal>
-            ))}
+                <div className="flex items-center gap-2">
+                  <HiStar className="text-amber-400" /> Curated just for you
+                </div>
+              </div>
+            </div>
           </div>
-        )}
-      </section>
 
-      {/* ============ TIMELINE + RECOMMENDED ============ */}
-      <section>
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* Timeline */}
-          <Reveal className="lg:col-span-2">
-            <div className="bg-white rounded-3xl shadow-soft border border-amber-100/60 p-6 md:p-8 h-full">
-              <SectionHeader eyebrow="Schedule" title="Your Event Schedule" icon={<HiCalendar />} />
-              {upcoming.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center mb-4 text-2xl">🧭</div>
-                  <p className="text-stone-600 font-bold">Nothing scheduled yet</p>
-                  <p className="text-stone-400 text-sm mt-1">Your event timeline will appear once you book.</p>
-                </div>
-              ) : (
-                <div className="relative pl-6">
-                  <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-gradient-to-b from-amber-400 via-amber-300 to-transparent rounded-full"></div>
-                  <div className="space-y-6">
-                    {upcoming.map((b) => {
-                      const d = new Date(b.eventId.date);
-                      return (
-                        <div key={b._id} className="relative">
-                          <span className={`absolute -left-6 top-1 w-3.5 h-3.5 rounded-full ring-4 ${b.status === 'confirmed' ? 'bg-green-500 ring-green-100' : 'bg-amber-400 ring-amber-100'}`}></span>
-                          <div className="flex items-center gap-3 mb-1">
-                            <div className="bg-stone-900 text-white rounded-xl px-3 py-1.5 text-center min-w-[64px]">
-                              <div className="text-[10px] font-black uppercase tracking-wider opacity-60">{d.toLocaleString('en', { month: 'short' })}</div>
-                              <div className="text-lg font-black leading-none">{d.getDate()}</div>
-                            </div>
-                            <StatusBadge status={b.status} />
-                          </div>
-                          <h3 className="font-extrabold text-stone-900 mt-2">{b.eventId.title}</h3>
-                          <p className="text-sm text-stone-500 font-semibold flex items-center gap-1.5 mt-1">
-                            <HiClock className="text-amber-500" /> {fmtTime(b.eventId.date)}
-                            <span className="text-stone-300">·</span>
-                            <HiLocationMarker className="text-amber-500" /> {b.eventId.location}
-                          </p>
-                          <p className="text-xs font-black text-amber-700 mt-1.5">{getCountdown(b.eventId.date)}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+          <div className="relative group overflow-hidden rounded-[30px] border border-amber-100 bg-white shadow-[0_20px_40px_rgba(0,0,0,0.06)]">
+            <img src={getEventImage(primaryEvent)} alt={primaryEvent?.title || 'Featured event'} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+            <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-950/40 to-transparent" />
+            <div className="absolute top-5 left-5 inline-flex items-center gap-2 rounded-full bg-amber-400/90 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.22em] text-stone-900">
+              <HiSparkles className="text-xs" /> Featured
             </div>
-          </Reveal>
-
-          {/* Recommended */}
-          <Reveal delay={120} className="lg:col-span-3">
-            <div className="bg-white rounded-3xl shadow-soft border border-amber-100/60 p-6 md:p-8 h-full">
-              <SectionHeader
-                eyebrow="Handpicked For You"
-                title="Recommended For You"
-                sub="Based on the events you love"
-                icon={<HiStar />}
-                action={
-                  <Link to="/" className="text-sm font-bold text-amber-700 hover:underline inline-flex items-center gap-1">
-                    View all <HiArrowRight className="text-xs" />
-                  </Link>
-                }
-              />
-              {recommended.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center mb-4 text-2xl">✨</div>
-                  <p className="text-stone-600 font-bold">No recommendations right now</p>
-                  <p className="text-stone-400 text-sm mt-1">Check back soon for new events.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-                  {recommended.map((ev) => (
-                    <div key={ev._id} className="group bg-stone-50/60 border border-amber-50 rounded-2xl overflow-hidden hover:border-amber-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col">
-                      <div className="relative h-32 overflow-hidden">
-                        <img src={getEventImage(ev)} alt={ev.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-stone-950/60 to-transparent"></div>
-                        <span className="absolute top-3 left-3 bg-stone-950/70 backdrop-blur-sm text-amber-200 text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full">
-                          {ev.category || 'General'}
-                        </span>
-                        <span className="absolute bottom-3 right-3 bg-white/95 px-2.5 py-1 rounded-full text-xs font-black">
-                          {ev.ticketPrice === 0 ? <span className="text-green-600">FREE</span> : <span className="text-amber-800">${ev.ticketPrice}</span>}
-                        </span>
-                      </div>
-                      <div className="p-4 flex-grow flex flex-col">
-                        <h3 className="font-extrabold text-stone-900 text-sm leading-snug mb-2">{ev.title}</h3>
-                        <p className="text-xs text-stone-500 font-semibold flex items-center gap-1.5 mb-1">
-                          <HiCalendar className="text-amber-500" /> {fmtShortDate(ev.date)} · {fmtTime(ev.date)}
-                        </p>
-                        <p className="text-xs text-stone-400 font-medium flex items-center gap-1.5 mb-4">
-                          <HiLocationMarker className="text-amber-500" /> <span className="truncate">{ev.location}</span>
-                        </p>
-                        <div className="mt-auto">
-                          <Link
-                            to={`/events/${ev._id}`}
-                            className="flex items-center justify-center gap-1.5 w-full bg-stone-900 hover:bg-gradient-to-r hover:from-amber-500 hover:to-amber-600 hover:text-stone-900 text-white font-bold text-sm py-2.5 rounded-xl transition-all"
-                          >
-                            Book Now <HiFire className="text-xs" />
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+              <div className="text-[10px] font-black uppercase tracking-[0.25em] text-amber-200 mb-3">Featured Event</div>
+              <h2 className="text-2xl md:text-3xl font-black tracking-[-0.04em] mb-3">{primaryEvent?.title || 'Select an event'}</h2>
+              <div className="space-y-2 text-sm text-stone-200">
+                <div className="flex items-center gap-2"><HiCalendar className="text-amber-300" /> {primaryEvent ? formatFullDate(primaryEvent.date) : 'No event selected'}</div>
+                <div className="flex items-center gap-2"><HiLocationMarker className="text-amber-300" /> {primaryEvent?.location || 'Location pending'}</div>
+              </div>
             </div>
-          </Reveal>
+          </div>
         </div>
       </section>
+
+      <section className="mb-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Bookings', value: stats.total, icon: <HiTicket />, tone: 'amber', detail: 'Across all events' },
+          { label: 'Confirmed', value: stats.confirmed, icon: <HiCheckCircle />, tone: 'emerald', detail: 'Ready to attend' },
+          { label: 'Upcoming', value: stats.upcoming, icon: <HiCalendar />, tone: 'sky', detail: 'In your plan' },
+          { label: 'Completed', value: stats.completed, icon: <HiTrendingUp />, tone: 'violet', detail: 'Past experiences' },
+        ].map((card, index) => (
+          <div key={card.label} className="group rounded-[26px] border border-stone-200 bg-white p-5 shadow-[0_12px_28px_rgba(15,23,42,0.04)] hover:-translate-y-1 transition">
+            <div className="flex items-center justify-between">
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl ${
+                card.tone === 'amber' ? 'bg-amber-100 text-amber-700' :
+                card.tone === 'emerald' ? 'bg-emerald-100 text-emerald-700' :
+                card.tone === 'sky' ? 'bg-sky-100 text-sky-700' : 'bg-violet-100 text-violet-700'
+              }`}>
+                {card.icon}
+              </div>
+              <div className="text-emerald-500 text-[10px] font-black uppercase tracking-[0.2em]">+{index + 1}</div>
+            </div>
+            <div className="mt-5 text-3xl font-black tracking-[-0.04em] text-stone-900">{card.value}</div>
+            <div className="mt-1 text-xs font-black uppercase tracking-[0.2em] text-stone-500">{card.label}</div>
+            <div className="mt-4 h-1.5 w-full rounded-full bg-stone-100 overflow-hidden">
+              <div className={`h-full rounded-full ${card.tone === 'amber' ? 'bg-amber-500' : card.tone === 'emerald' ? 'bg-emerald-500' : card.tone === 'sky' ? 'bg-sky-500' : 'bg-violet-500'}`} style={{ width: `${Math.min((card.value / Math.max(stats.total || 1, 1)) * 100 || 12, 100)}%` }} />
+            </div>
+            <div className="mt-3 text-xs text-stone-500">{card.detail}</div>
+          </div>
+        ))}
+      </section>
+
+      <section className="mb-10 rounded-[30px] border border-stone-200 bg-white p-5 md:p-6 shadow-[0_15px_35px_rgba(15,23,42,0.04)]">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between mb-6">
+          <div>
+            <div className="text-[11px] font-black uppercase tracking-[0.24em] text-amber-600">Discover</div>
+            <h2 className="mt-2 text-3xl font-black tracking-[-0.04em] text-stone-900">Discover your next experience</h2>
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative min-w-[200px] flex-1">
+              <HiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" />
+              <input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search events"
+                className="w-full rounded-full border border-stone-200 bg-stone-50 pl-11 pr-4 py-2.5 text-sm outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
+              />
+            </div>
+            <button className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-stone-50 px-4 py-2.5 text-sm font-bold text-stone-700 hover:bg-stone-100">
+              <HiFilter /> Filter
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-6">
+          {CATEGORY_TABS.map((category) => (
+            <button
+              key={category}
+              onClick={() => setActiveCategory(category)}
+              className={`rounded-full px-4 py-2 text-sm font-bold transition ${
+                activeCategory === category ? 'bg-stone-900 text-white shadow-lg shadow-stone-900/10' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+              }`}
+            >
+              {category}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {filteredEvents.length === 0 ? (
+            <div className="md:col-span-2 xl:col-span-3 rounded-[26px] border border-dashed border-stone-300 bg-stone-50 p-12 text-center">
+              <div className="text-5xl mb-4">🎟️</div>
+              <h3 className="text-2xl font-black text-stone-900">No events match your search.</h3>
+              <p className="mt-2 text-stone-500">Try another keyword or switch category.</p>
+            </div>
+          ) : (
+            filteredEvents.map((event, index) => (
+              <div key={event._id} className={`group relative overflow-hidden rounded-[26px] border border-stone-200 bg-stone-50 shadow-[0_12px_28px_rgba(15,23,42,0.04)] ${index % 3 === 0 ? 'xl:col-span-1' : ''}`}>
+                <div className="relative h-64 overflow-hidden">
+                  <img src={getEventImage(event)} alt={event.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-stone-950/15 to-transparent" />
+                  <div className="absolute left-4 top-4 rounded-full border border-white/20 bg-black/30 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.2em] text-amber-200 backdrop-blur-sm">
+                    {event.category || 'General'}
+                  </div>
+                  <div className="absolute right-4 top-4 rounded-full bg-white/90 px-2.5 py-1 text-xs font-black text-stone-900">
+                    {formatPrice(event.ticketPrice)}
+                  </div>
+                </div>
+                <div className="p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-xs font-bold text-stone-500">{formatDate(event.date)}</div>
+                    <span className="text-xs font-bold text-emerald-600">{event.availableSeats || 0} left</span>
+                  </div>
+                  <h3 className="text-xl font-black tracking-[-0.03em] text-stone-900 leading-tight">{event.title}</h3>
+                  <div className="mt-3 space-y-2 text-sm text-stone-600">
+                    <div className="flex items-center gap-2"><HiCalendar className="text-amber-500" /> {formatFullDate(event.date)}</div>
+                    <div className="flex items-center gap-2"><HiLocationMarker className="text-amber-500" /> {event.location}</div>
+                  </div>
+                  <div className="mt-5 flex items-center justify-between gap-3">
+                    <div className="text-sm font-bold text-stone-900">{formatPrice(event.ticketPrice)}</div>
+                    <Link to={`/events/${event._id}`} className="inline-flex items-center gap-2 rounded-full bg-stone-900 px-4 py-2.5 text-sm text-white font-bold hover:bg-stone-800 transition">
+                      View Details <HiArrowRight className="text-xs" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+
+      <section className="mb-10 grid lg:grid-cols-[0.9fr_1.1fr] gap-6">
+        <div className="rounded-[30px] border border-stone-200 bg-white p-5 md:p-6 shadow-[0_15px_35px_rgba(15,23,42,0.04)]">
+          <div className="text-[11px] font-black uppercase tracking-[0.24em] text-amber-600">Next Up</div>
+          {upcomingBooking?.eventId ? (
+            <>
+              <div className="mt-5 overflow-hidden rounded-[24px] border border-stone-200">
+                <img src={getEventImage(upcomingBooking.eventId)} alt={upcomingBooking.eventId.title} className="h-56 w-full object-cover" />
+              </div>
+              <div className="mt-5">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-2xl font-black tracking-[-0.04em] text-stone-900">{upcomingBooking.eventId.title}</h3>
+                  <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">
+                    {statusLabel(upcomingBooking.status)}
+                  </span>
+                </div>
+                <div className="mt-4 space-y-2 text-sm text-stone-600">
+                  <div className="flex items-center gap-2"><HiCalendar className="text-amber-500" /> {formatFullDate(upcomingBooking.eventId.date)}</div>
+                  <div className="flex items-center gap-2"><HiClock className="text-amber-500" /> {formatTime(upcomingBooking.eventId.date)}</div>
+                  <div className="flex items-center gap-2"><HiLocationMarker className="text-amber-500" /> {upcomingBooking.eventId.location}</div>
+                </div>
+                <div className="mt-5 flex items-center justify-between rounded-2xl bg-stone-50 px-4 py-3">
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-500">Booking ID</div>
+                    <div className="mt-1 text-sm font-black text-stone-900">{bookingCode(upcomingBooking._id)}</div>
+                  </div>
+                  <Link to={`/events/${upcomingBooking.eventId._id}`} className="inline-flex items-center gap-2 rounded-full bg-stone-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-stone-800 transition">
+                    View Booking <HiArrowRight className="text-xs" />
+                  </Link>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="mt-6 rounded-[26px] border border-dashed border-stone-300 bg-stone-50 p-8 text-center">
+              <div className="text-5xl mb-4">🎉</div>
+              <h3 className="text-xl font-black text-stone-900">Your next experience is waiting.</h3>
+              <p className="mt-2 text-stone-500">Start exploring curated events and reserve your next great night out.</p>
+              <Link to="/" className="mt-5 inline-flex items-center gap-2 rounded-full bg-amber-500 px-5 py-3 text-sm font-black text-stone-900">Explore Events <HiArrowRight /></Link>
+            </div>
+          )}
+        </div>
+
+        <div id="bookings" className="rounded-[30px] border border-stone-200 bg-white p-5 md:p-6 shadow-[0_15px_35px_rgba(15,23,42,0.04)]">
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <div className="text-[11px] font-black uppercase tracking-[0.24em] text-amber-600">Activity</div>
+              <h2 className="mt-2 text-3xl font-black tracking-[-0.04em] text-stone-900">Recent booking activity</h2>
+            </div>
+            <Link to="#bookings" className="text-sm font-bold text-amber-700">See all</Link>
+          </div>
+
+          {bookings.length === 0 ? (
+            <div className="rounded-[24px] border border-dashed border-stone-300 bg-stone-50 p-8 text-center">
+              <div className="text-5xl mb-4">✨</div>
+              <h3 className="text-xl font-black text-stone-900">Your next experience is waiting.</h3>
+              <p className="mt-2 text-stone-500">Book an event to build your activity timeline.</p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {bookings.slice(0, 4).map((booking, index) => (
+                <div key={booking._id} className="relative pl-7">
+                  {index !== bookings.slice(0, 4).length - 1 && <div className="absolute left-[8px] top-8 bottom-[-18px] w-px bg-stone-200"></div>}
+                  <div className={`absolute left-0 top-2 w-4 h-4 rounded-full ${booking.status === 'confirmed' ? 'bg-emerald-500' : booking.status === 'cancelled' ? 'bg-red-400' : 'bg-amber-400'} ring-4 ring-white shadow-md`}></div>
+                  <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <div className="font-bold text-stone-900">{booking.eventId?.title || 'Event'}</div>
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-500">{statusLabel(booking.status)}</span>
+                    </div>
+                    <div className="text-sm text-stone-600">
+                      {booking.status === 'confirmed' ? 'Booking confirmed and ready for check-in.' : booking.status === 'cancelled' ? 'Booking cancelled.' : 'Awaiting confirmation from the venue.'}
+                    </div>
+                    <div className="mt-3 text-xs text-stone-500 flex items-center justify-between">
+                      <span>{bookingCode(booking._id)}</span>
+                      <span>{new Date(booking.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="mb-10 rounded-[30px] border border-stone-200 bg-white p-5 md:p-6 shadow-[0_15px_35px_rgba(15,23,42,0.04)]">
+        <div className="flex items-end justify-between gap-3 mb-6">
+          <div>
+            <div className="text-[11px] font-black uppercase tracking-[0.24em] text-amber-600">Recommended</div>
+            <h2 className="mt-2 text-3xl font-black tracking-[-0.04em] text-stone-900">You might also like</h2>
+          </div>
+          <Link to="/" className="inline-flex items-center gap-2 text-sm font-bold text-amber-700">Browse more <HiArrowRight className="text-xs" /></Link>
+        </div>
+
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          {recommendations.length === 0 ? (
+            <div className="xl:col-span-4 rounded-[24px] border border-dashed border-stone-300 bg-stone-50 p-8 text-center">
+              <div className="text-5xl mb-4">🎪</div>
+              <h3 className="text-xl font-black text-stone-900">More events are coming soon.</h3>
+            </div>
+          ) : (
+            recommendations.map((event) => (
+              <div key={event._id} className="group overflow-hidden rounded-[24px] border border-stone-200 bg-stone-50 hover:shadow-xl transition">
+                <div className="relative h-52 overflow-hidden">
+                  <img src={getEventImage(event)} alt={event.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-stone-950/70 via-stone-950/15 to-transparent" />
+                  <div className="absolute left-3 top-3 rounded-full bg-black/30 px-2 py-1 text-[9px] font-black uppercase tracking-[0.2em] text-amber-200 backdrop-blur-sm">
+                    {event.category || 'General'}
+                  </div>
+                  <div className="absolute right-3 top-3 rounded-full bg-white/90 px-2 py-1 text-[10px] font-black text-stone-900">
+                    {formatPrice(event.ticketPrice)}
+                  </div>
+                </div>
+                <div className="p-4">
+                  <div className="mb-2 text-xs font-bold text-stone-500">{formatDate(event.date)}</div>
+                  <h3 className="text-lg font-black tracking-[-0.03em] text-stone-900 leading-tight">{event.title}</h3>
+                  <div className="mt-3 flex items-center gap-2 text-sm text-stone-600"><HiLocationMarker className="text-amber-500" /> {event.location}</div>
+                  <Link to={`/events/${event._id}`} className="mt-4 inline-flex items-center gap-2 rounded-full bg-stone-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-stone-800 transition">
+                    Book now <HiArrowCircleRight className="text-sm" />
+                  </Link>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+
+      {!bookings.length && (
+        <section className="mb-10 overflow-hidden rounded-[32px] border border-amber-100 bg-gradient-to-br from-[#fffaf0] via-white to-[#fff6e8] p-8 shadow-[0_20px_50px_rgba(120,87,17,0.08)]">
+          <div className="grid lg:grid-cols-[1fr_0.8fr] items-center gap-8">
+            <div>
+              <div className="text-[11px] font-black uppercase tracking-[0.24em] text-amber-600">Your next chapter</div>
+              <h2 className="mt-3 text-4xl font-black tracking-[-0.05em] text-stone-900">Your next experience is waiting.</h2>
+              <p className="mt-3 max-w-md text-stone-600">Explore unforgettable live events, intimate sessions, and standout venues designed around your taste.</p>
+              <Link to="/" className="mt-6 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-400 to-amber-600 px-6 py-3.5 text-sm font-black text-stone-900 shadow-lg shadow-amber-500/25">
+                Explore Events <HiArrowRight />
+              </Link>
+            </div>
+            <div className="relative h-72 rounded-[28px] bg-gradient-to-br from-stone-900 via-stone-800 to-[#27160d] overflow-hidden">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.25),transparent_35%)]" />
+              <div className="absolute bottom-6 left-6 right-6 rounded-[22px] border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+                <div className="flex items-center justify-between text-white">
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-200">Live</div>
+                    <div className="mt-2 text-2xl font-black">Night Market</div>
+                  </div>
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-stone-900">
+                    <HiSparkles className="text-xl" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <footer className="mt-12 rounded-[30px] border border-stone-200 bg-stone-950 text-stone-200 p-6 md:p-8">
+        <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr_0.8fr_0.8fr_1.2fr]">
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 text-stone-900 flex items-center justify-center font-black">
+                <HiSparkles className="text-lg" />
+              </div>
+              <div className="text-xl font-black tracking-tight">Venue<span className="text-amber-400">Flow</span></div>
+            </div>
+            <p className="text-sm text-stone-400 max-w-xs">Discover, book, and experience the moments that shape your city.</p>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-amber-300 mb-4">About</h3>
+            <ul className="space-y-2 text-sm text-stone-400">
+              <li>Our story</li>
+              <li>Partners</li>
+              <li>Press</li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-amber-300 mb-4">Explore</h3>
+            <ul className="space-y-2 text-sm text-stone-400">
+              <li>Events</li>
+              <li>Venues</li>
+              <li>Collections</li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-amber-300 mb-4">Help</h3>
+            <ul className="space-y-2 text-sm text-stone-400">
+              <li>Support</li>
+              <li>Contact</li>
+              <li>Privacy</li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-amber-300 mb-4">Follow</h3>
+            <div className="flex items-center gap-3 text-xl text-stone-300">
+              <div className="w-10 h-10 rounded-full border border-white/10 bg-white/5 flex items-center justify-center"><HiHeart /></div>
+              <div className="w-10 h-10 rounded-full border border-white/10 bg-white/5 flex items-center justify-center"><HiSparkles /></div>
+              <div className="w-10 h-10 rounded-full border border-white/10 bg-white/5 flex items-center justify-center"><HiBell /></div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 border-t border-white/10 pt-5 text-sm text-stone-500 flex items-center justify-between gap-3 flex-col sm:flex-row">
+          <span>© 2026 VenueFlow. All rights reserved.</span>
+          <span className="text-stone-400">Discover → Book → Experience</span>
+        </div>
+      </footer>
     </div>
   );
 };
