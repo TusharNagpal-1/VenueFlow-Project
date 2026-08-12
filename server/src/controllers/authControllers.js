@@ -13,33 +13,32 @@ const generateOTP = () => {
 };
 
 const registerUser = async (req, res) => {
-  const { username, email, password } = req.body;
-  // Implementation for user registration
-  if (!username || !email || !password) {
-    return res.status(400).json({ message: "Please provide all required fields" });
+  try {
+    const { username, email, password } = req.body;
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: "Please provide all required fields" });
+    }
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    await User.create({ username, email, password: hashedPassword, role: "user", isVerified: false });
+    const otp = generateOTP();
+    console.log(`OTP for ${email}: ${otp}`);
+    await OTP.findOneAndDelete({ email, action: 'account_verification' });
+    await OTP.create({ email, otp, action: 'account_verification' });
+    await sendOTPEmail(email, otp, 'account_verification');
+    res.status(201).json({ message: "OTP sent to your email for verification. Please check your inbox." });
+  } catch (error) {
+    console.error('Error registering user:', error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
   }
-  const user=await User.findOne({ email });
-  if (user) {
-    return res.status(400).json({ message: "User already exists" });
-  }
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
- try {
-  const newUser=await User.create({ username, email, password: hashedPassword , role: "user", isVerified: false });
-  const otp = generateOTP();
-  console.log(`OTP for ${email}: ${otp}`);
-  await OTP.create({ email, otp, action: 'account_verification'});
-  await sendOTPEmail(email, otp, 'account_verification');
-  res.status(201).json({message: "OTP sent to your email for verification. Please check your inbox."});   
-} catch (error) {
-  console.error('Error registering user:', error);
-  res.status(500).json({ message: "Internal server error", error: error.message });
-}
 };
 const loginUser = async (req, res) => {
  try {
-    const { email, password } = req.body;
-  // Implementation for user login
+    const { email, password, role } = req.body;
     if (!email || !password) {
     return res.status(400).json({ message: "Please provide all required fields" });
   }
@@ -48,6 +47,15 @@ const loginUser = async (req, res) => {
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+
+        if (role) {
+            if (role === 'admin' && user.role !== 'admin') {
+                return res.status(403).json({ message: 'This account does not have admin access. Please sign in as a User.' });
+            }
+            if (role === 'user' && user.role === 'admin') {
+                return res.status(403).json({ message: 'This is an admin account. Please select Admin to sign in.' });
+            }
+        }
 
         if (!user.isVerified && user.role !== 'admin') {
             const otp = generateOTP();
@@ -71,6 +79,9 @@ const loginUser = async (req, res) => {
 const verifyOTP = async (req, res) => {
     try {
         const { email, otp } = req.body;
+        if (!email || !otp) {
+            return res.status(400).json({ message: 'Email and OTP are required' });
+        }
         const validOTP = await OTP.findOne({ email, otp, action: 'account_verification' });
 
         if (!validOTP) {
@@ -78,6 +89,9 @@ const verifyOTP = async (req, res) => {
         }
 
         const user = await User.findOneAndUpdate({ email }, { isVerified: true }, { new: true });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
         await OTP.deleteOne({ _id: validOTP._id }); // Delete OTP after usage
 
         res.json({

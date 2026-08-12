@@ -19,6 +19,16 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/bookings", bookingRoutes);
+
+app.use((req, res) => {
+  res.status(404).json({ message: "Route not found" });
+});
+
+app.use((err, req, res, next) => {
+  console.error("Unhandled error:", err);
+  res.status(500).json({ message: "Server Error", error: err.message });
+});
+
 const startServer = async () => {
   await connectDB();
   app.listen(PORT, () => {

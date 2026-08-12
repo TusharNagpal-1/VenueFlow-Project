@@ -1,9 +1,11 @@
 const Booking = require('../models/Bookingmodel.js');
 const Event = require('../models/Eventmodel.js');
 const OTP = require('../models/otpmodel.js');
+const mongoose = require('mongoose');
 const { sendBookingEmail, sendOTPEmail } = require('../utils/email.js');
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+const isValidId = (id) => mongoose.isValidObjectId(id);
 
 exports.sendBookingOTP = async (req, res) => {
     try {
@@ -20,6 +22,12 @@ exports.sendBookingOTP = async (req, res) => {
 exports.bookEvent = async (req, res) => {
     try {
         const { eventId, otp } = req.body;
+        if (!eventId || !otp) {
+            return res.status(400).json({ message: 'Event id and OTP are required' });
+        }
+        if (!isValidId(eventId)) {
+            return res.status(400).json({ message: 'Invalid event id' });
+        }
 
         const validOTP = await OTP.findOne({ email: req.user.email, otp, action: 'event_booking' });
         if (!validOTP) {
@@ -29,6 +37,7 @@ exports.bookEvent = async (req, res) => {
         const event = await Event.findById(eventId);
         if (!event) return res.status(404).json({ message: 'Event not found' });
         if (event.availableSeats <= 0) return res.status(400).json({ message: 'No seats available' });
+        if (new Date(event.date) < new Date()) return res.status(400).json({ message: 'This event has already ended' });
 
         const existingBooking = await Booking.findOne({ userId: req.user.id, eventId });
         if (existingBooking && existingBooking.status !== 'cancelled') {
@@ -54,13 +63,27 @@ exports.bookEvent = async (req, res) => {
 exports.confirmBooking = async (req, res) => {
     try {
         const { paymentStatus } = req.body;
+        if (!isValidId(req.params.id)) {
+            return res.status(400).json({ message: 'Invalid booking id' });
+        }
+
         const booking = await Booking.findById(req.params.id).populate('userId').populate('eventId');
         if (!booking) return res.status(404).json({ message: 'Booking not found' });
 
         if (booking.status === 'confirmed') return res.status(400).json({ message: 'Booking is already confirmed' });
+        if (booking.status === 'cancelled') return res.status(400).json({ message: 'Cannot confirm a cancelled booking' });
 
         const event = await Event.findById(booking.eventId._id);
+        if (!event) return res.status(404).json({ message: 'Event not found' });
         if (event.availableSeats <= 0) {
+            return res.status(400).json({ message: 'No seats available to confirm this booking' });
+        }
+
+        const seatUpdate = await Event.updateOne(
+            { _id: event._id, availableSeats: { $gt: 0 } },
+            { $inc: { availableSeats: -1 } }
+        );
+        if (seatUpdate.modifiedCount === 0) {
             return res.status(400).json({ message: 'No seats available to confirm this booking' });
         }
 
@@ -69,9 +92,6 @@ exports.confirmBooking = async (req, res) => {
             booking.paymentStatus = paymentStatus;
         }
         await booking.save();
-
-        event.availableSeats -= 1;
-        await event.save();
 
         await sendBookingEmail(booking.userId.email, booking.userId.username, booking.eventId.title);
 
@@ -94,6 +114,9 @@ exports.getMyBookings = async (req, res) => {
 
 exports.cancelBooking = async (req, res) => {
     try {
+        if (!isValidId(req.params.id)) {
+            return res.status(400).json({ message: 'Invalid booking id' });
+        }
         const booking = await Booking.findById(req.params.id);
         if (!booking) return res.status(404).json({ message: 'Booking not found' });
         if (booking.userId.toString() !== req.user.id && req.user.role !== 'admin') {
