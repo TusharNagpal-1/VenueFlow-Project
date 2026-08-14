@@ -115,25 +115,25 @@ const AdminDashboard = () => {
       }
     }
   };
-
-  if (loading) return <div className="text-center py-20 text-xl font-semibold text-amber-800">Loading admin panel...</div>;
-
-  const totalRevenue = bookings
-    .filter(b => b.paymentStatus === 'paid' && b.status === 'confirmed')
-    .reduce((sum, b) => sum + b.amount, 0);
-  const paidClients = new Set(
-    bookings.filter(b => b.paymentStatus === 'paid' && b.status === 'confirmed').map(b => b.userId?._id)
-  ).size;
-  const pendingRequests = bookings.filter(b => b.status === 'pending').length;
+  const stats = React.useMemo(() => {
+    const totalRevenue = bookings
+      .filter(b => b.paymentStatus === 'paid' && b.status === 'confirmed')
+      .reduce((sum, b) => sum + b.amount, 0);
+    const paidClients = new Set(
+      bookings.filter(b => b.paymentStatus === 'paid' && b.status === 'confirmed').map(b => b.userId?._id)
+    ).size;
+    const pendingRequests = bookings.filter(b => b.status === 'pending').length;
+    return { totalRevenue, paidClients, pendingRequests };
+  }, [bookings]);
 
   const notifications = React.useMemo(() => {
     const list = [];
 
-    if (pendingRequests > 0) {
+    if (stats.pendingRequests > 0) {
       list.push({
         id: 'pending-requests',
         title: 'Pending booking requests',
-        detail: `${pendingRequests} booking request${pendingRequests > 1 ? 's are' : ' is'} waiting for your review.`,
+        detail: `${stats.pendingRequests} booking request${stats.pendingRequests > 1 ? 's are' : ' is'} waiting for your review.`,
         time: 'Now',
         unread: true,
       });
@@ -172,7 +172,9 @@ const AdminDashboard = () => {
     }
 
     return list.slice(0, 4);
-  }, [bookings, events, pendingRequests]);
+  }, [bookings, events, stats.pendingRequests]);
+
+  if (loading) return <div className="text-center py-20 text-xl font-semibold text-amber-800">Loading admin panel...</div>;
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -256,7 +258,7 @@ const AdminDashboard = () => {
         <div className="group bg-white p-6 rounded-3xl shadow-soft border border-amber-100/60 flex items-center justify-between hover:-translate-y-1 transition-all">
           <div>
             <p className="text-stone-500 text-xs font-bold uppercase tracking-wider mb-1">Total Revenue</p>
-            <h3 className="text-3xl font-black text-stone-900">${totalRevenue}</h3>
+            <h3 className="text-3xl font-black text-stone-900">${stats.totalRevenue}</h3>
           </div>
           <div className="w-14 h-14 bg-gradient-to-br from-green-400 to-green-600 text-white rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-green-500/25 group-hover:scale-110 transition-transform">
             <HiCash />
@@ -265,7 +267,7 @@ const AdminDashboard = () => {
         <div className="group bg-white p-6 rounded-3xl shadow-soft border border-amber-100/60 flex items-center justify-between hover:-translate-y-1 transition-all">
           <div>
             <p className="text-stone-500 text-xs font-bold uppercase tracking-wider mb-1">Paid Clients</p>
-            <h3 className="text-3xl font-black text-stone-900">{paidClients}</h3>
+            <h3 className="text-3xl font-black text-stone-900">{stats.paidClients}</h3>
           </div>
           <div className="w-14 h-14 bg-gradient-to-br from-blue-400 to-blue-600 text-white rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-blue-500/25 group-hover:scale-110 transition-transform">
             <HiUserGroup />
@@ -274,7 +276,7 @@ const AdminDashboard = () => {
         <div className="group bg-white p-6 rounded-3xl shadow-soft border border-amber-100/60 flex items-center justify-between hover:-translate-y-1 transition-all">
           <div>
             <p className="text-stone-500 text-xs font-bold uppercase tracking-wider mb-1">Pending Requests</p>
-            <h3 className="text-3xl font-black text-stone-900">{pendingRequests}</h3>
+            <h3 className="text-3xl font-black text-stone-900">{stats.pendingRequests}</h3>
           </div>
           <div className="w-14 h-14 bg-gradient-to-br from-amber-400 to-amber-600 text-stone-900 rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-amber-500/25 group-hover:scale-110 transition-transform">
             <HiClock />
